@@ -1,5 +1,5 @@
-# Use Rust base image
-FROM rust:latest
+# Use Rust 1.81.0
+FROM rust:1.81.0-slim
 
 # Set the working directory
 WORKDIR /app
@@ -15,4 +15,3 @@ EXPOSE 8080
 
 # Run the application
 CMD ["./target/release/crawchain"]
-

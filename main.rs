@@ -7,8 +7,9 @@ mod blockchain {
     use super::*;
     use serde::{Serialize, Deserialize};
     use sha2::{Digest, Sha256};
-    use std::collections::{HashMap, HashSet};
-    use p256::ecdsa::{SigningKey, VerifyingKey, signature::{Signer, Verifier}};
+    use std::collections::{HashMap};
+    use p256::ecdsa::{VerifyingKey, signature::{Verifier}};
+    use std::fmt;
 
     #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct Block {
@@ -71,12 +72,22 @@ mod blockchain {
         EnergyToken(f64),
     }
 
+    impl fmt::Display for Token {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                Token::CustodyToken(amount) => write!(f, "CustodyToken({})", amount),
+                Token::EnergyToken(amount) => write!(f, "EnergyToken({})", amount),
+            }
+        }
+    }
+
     #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct ZKProof {
         pub public_input: Vec<u8>,
         pub proof: Vec<u8>,
     }
 
+    #[derive(Debug)]
     pub struct Blockchain {
         pub lock_shard: Vec<Block>,
         pub vpp_shard: Vec<Block>,
@@ -85,6 +96,7 @@ mod blockchain {
         pub used_nonces: HashMap<u64, bool>, // Persistent nonce management
         pub public_keys: HashMap<Address, VerifyingKey>, // Store public keys of users
     }
+    
 
     impl Blockchain {
         pub fn new() -> Self {
@@ -158,7 +170,13 @@ mod blockchain {
             for transaction in transactions {
                 if let Some(public_key) = self.public_keys.get(&transaction.sender) {
                     let message = format!("{}:{}:{}:{}:{}", transaction.sender, transaction.receiver, transaction.token, transaction.nonce, transaction.gas_limit);
-                    if public_key.verify(message.as_bytes(), &hex::decode(&transaction.signature).unwrap()).is_err() {
+
+                    let decoded_signature = hex::decode(&transaction.signature).unwrap();
+                    if let Ok(signature) = p256::ecdsa::Signature::from_der(&decoded_signature) {
+                        if public_key.verify(message.as_bytes(), &signature).is_err() {
+                            return false;
+                        }
+                    } else {
                         return false;
                     }
                 } else {
@@ -216,8 +234,9 @@ fn main() {
 
     let message = "Alice:Bob:CustodyToken(10.0):1:1000";
     let signature = signing_key.sign(message.as_bytes());
+    let hex_signature = hex::encode(signature.to_der().as_bytes());
 
-    let tx1 = blockchain::Transaction {
+    let transaction = blockchain::Transaction {
         sender: "Alice".to_string(),
         receiver: "Bob".to_string(),
         token: blockchain::Token::CustodyToken(10.0),
@@ -225,11 +244,14 @@ fn main() {
         contract_code: None,
         gas_limit: 1000,
         zkp: None,
-        signature: hex::encode(signature.to_der().as_bytes()),
+        signature: hex_signature,
     };
 
-    let shard_id = blockchain.assign_shard(&tx1.sender);
-    blockchain.add_block(vec![tx1], shard_id);
+    // Assign the transaction to a shard
+    let shard_id = blockchain.assign_shard(&transaction.sender);
+    blockchain.add_block(vec![transaction], shard_id);
 
-    println!("Blockchain initialized and updated with ECC integration, sharding, and batch verification.");
+    println!("Blockchain state:");
+    println!("{:#?}", blockchain);
 }
+
