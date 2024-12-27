@@ -1,10 +1,19 @@
 [package]
 name = "Crawchain"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 
 [[bin]]
 name = "Crawchain"
 path = "main.rs"
+serde = { version = "1.0", features = ["derive"] }
+sha2 = "0.10"
+p256 = { version = "0.10", features = ["ecdsa"] }
+rand = "0.8"
+chrono = "0.4"
+wasmer = "2.3"
+hex = "0.4"
+
+
