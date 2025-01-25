@@ -1,4 +1,4 @@
-// CrawChain: Modular Blockchain Codebase with Enhanced Security, Sharding, WASM, and ECC Integration
+// CrawChain: Modular Blockchain Codebase with Enhanced Security, Sharding, WASM, and ECC Integration.
 
 // Main Modules
 type Address = String;
